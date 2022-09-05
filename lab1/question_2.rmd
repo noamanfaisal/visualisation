@@ -1,1 +1,266 @@
-question_1.rmd
+---
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+runtime: shiny
+title: "Lab1"
+---
+# Lab1-Q2
+```{r load libraries, echo=FALSE, warning = FALSE, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(grid)
+library(plotly)
+library(shiny)
+```
+
+## Lab1-Q2-1
+Read data from SENIC.txt into R.
+
+```{r clean_data, echo=FALSE}
+# loading file, changing column name
+load_file <- function(file_name){
+  df <- read.table(file_name, sep = "",header = FALSE)
+  colnames(df) <- c("ID", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", 
+                    "X10", "X11")
+  return (df)
+}
+```
+```{r clean_data_loading, echo=TRUE}
+data = load_file('material/SENIC.txt')
+head(data)
+```
+## Lab1-Q2-2
+Create a function that for a given column (vector) X does the following:
+a. It computes first and third quartiles Q1 and Q3 with quantiles()
+b. It returns indices of outlying observations, i.e. observation with X-values 
+greater than Q3+1.5(Q3-Q1) or less than Q1-1.5(Q3-Q1).
+
+```{r computational_function, echo=TRUE}
+
+get_observations_according_to_quartile <-function(data, col_name){
+  # create quartiles
+  quartiles = quantile(unlist(data[col_name]), 
+                       prob=c(.25, .5, .75, 1))
+  # naming quarties
+  names(quartiles) <- c("Q1", "Q2", "Q3", "Q4")
+  # Q3+1.5(Q3-Q1)
+  formula_1 = quartiles[['Q3']]+ 1.5 * (quartiles[['Q3']]-quartiles[['Q1']])
+  # Q1-1.5(Q3-Q1)
+  formula_2 = quartiles[['Q1']]-1.5 * (quartiles[['Q3']]-quartiles[['Q1']])
+  return (data %>%
+           mutate('outlier' = ifelse(
+             (!!sym(col_name) > formula_1 | !!sym(col_name) 
+                                 < formula_2), !!sym(col_name), NA))
+          )
+}
+create_density_plot <- function(data, outlier_data, 
+                                column_to_create_density_graph, x_label){
+  if (nrow(outlier_data) >=1){
+    # if outlier data is available
+    p <- ggplot(data, aes_string(x=column_to_create_density_graph)) + 
+      geom_density() +
+      xlab(x_label) +
+      geom_point(data=outlier_data, 
+                 aes(x=outlier, y=0), shape=18)
+  }
+  else{
+    # if outlier data is not available
+    p <- ggplot(data, aes_string(x=column_to_create_density_graph)) + 
+      geom_density() +
+      xlab(x_label)
+    
+  }
+  return (p)
+}
+create_density_plot_with_bw <- function(data, outlier_data, 
+                                column_to_create_density_graph, x_label, bw){
+  if (nrow(outlier_data) >=1){
+    # if outlier data is available
+    p <- ggplot(data, aes_string(x=column_to_create_density_graph)) + 
+      geom_density(bw=bw) +
+      xlab(x_label) +
+      geom_point(data=outlier_data, 
+                 aes(x=outlier, y=0), shape=18)
+  }
+  else{
+    # if outlier data is not available
+    p <- ggplot(data, aes_string(x=column_to_create_density_graph)) + 
+      geom_density(bw=bw) +
+      xlab(x_label)
+    
+  }
+  return (p)
+}
+
+outlier_data_and_graph <- function(column_name, x_label){
+  outlier_data <- get_observations_according_to_quartile(data, column_name)  
+  outlier_data <- outlier_data %>%
+                            filter(!is.na(outlier))
+  graph <- create_density_plot(data, outlier_data, column_name, x_label)
+
+    
+  return (graph)
+}
+```
+## Lab1-Q2-3
+
+Use ggplot2 and the function from step 2 to create a density plot of Infection 
+risk in which outliers are plotted as a diamond symbol diamond . Make some 
+analysis of this graph.
+
+```{r graph_function, echo=FALSE}
+# as X3 is infection risk
+infection_risk.graph = outlier_data_and_graph("X3", "Infection Risk")
+print(infection_risk.graph)
+```
+
+## Lab1-Q2-4
+Produce graphs of the same kind as in step 3 but for all other quantitative 
+variables in the data (aes_string() can be useful here). Put these graphs into
+one (hint: arrangeGrob() in gridExtra package can be used) and make some 
+analysis.
+
+```{r all_graphs_arrange_function, echo=FALSE}
+#### length of stay
+# filtering outlier_data
+# Length of Stay = X1
+length_of_stay.graph <- outlier_data_and_graph("X1", "Length of Stay")
+# Age
+age.graph <- outlier_data_and_graph("X2", "Age")
+# routine culturing ratio
+routine_culturing_ratio.graph <- outlier_data_and_graph("X4", 
+                                                      "Routine Culturing Ratio")
+# routine chest x-ray ratio
+routine_chest_x_ray_ratio.graph <- outlier_data_and_graph("X5", 
+                                                    "Routine Chest X-Ray Ratio")
+# number of beds
+number_of_beds.graph <- outlier_data_and_graph("X6", "Number of Beds")
+# average daily census
+average_daily_census.graph <- outlier_data_and_graph("X9", 
+                                                     "Average Daily Census")
+# number of nurses
+number_of_nurses.graph <- outlier_data_and_graph("X10", "Number of Nurses")
+# available facilities and services
+available_facilities_and_services.graph = outlier_data_and_graph("X11", 
+                                            "Available Facilities and Services")
+
+grid.arrange(
+  length_of_stay.graph, 
+  age.graph, 
+  infection_risk.graph, 
+  routine_culturing_ratio.graph,
+  routine_chest_x_ray_ratio.graph,
+  number_of_beds.graph,
+  average_daily_census.graph,
+  number_of_nurses.graph,
+  available_facilities_and_services.graph,
+  ncol=3)
+```
+## Lab1-Q2-5
+Create a ggplot2 scatter plot showing the dependence of Infection risk on the 
+Number of Nurses where the points are colored by Number of Beds. Is there any 
+interesting information in this plot that was not visible in the plots in 
+step 4? What do you think is a possible danger of having such a color scale?
+```{r scatter_plot, echo=FALSE}
+number_of_nurses_and_infection_risk.graph <- ggplot(data, aes(x=X10, y=X3, 
+                                                              color=X6)) +
+  geom_point() +
+    xlab('Number of Nurses') +
+    ylab('Infection Risk')
+print(number_of_nurses_and_infection_risk.graph)
+```
+## Lab1-Q2-6
+Convert graph from step 3 to Plotly with ggplotly function. What important new 
+functionality have you obtained compared to the graph from step 3? Make some 
+additional analysis of the new graph.
+```{r plotly_for_step3, echo=FALSE}
+# ggplotly(infection_risk.graph)
+```
+## Lab1-Q2-7
+
+Use data plot-pipeline and the pipeline operator to make a histogram of 
+Infection risk in which outliers are plotted as a diamond symbol. 
+Make this plot in the Plotly directly 
+(i.e. without using ggplot2 functionality). Hint: select(), filter() and 
+is.element() functions might be useful here.
+
+```{r complete_plotly, echo=FALSE}
+outlier_data <- get_observations_according_to_quartile(data, "X3")
+plotly.graph <- data %>% 
+                select(X3) %>% 
+                plot_ly(x = ~X3, type = "histogram") %>% 
+                add_markers(x = outlier_data$outlier, y = 0, showlegend = FALSE,
+                marker = list(symbol = c("diamond"))) %>% 
+  layout(
+    title = "Histogram of Infection risk in with outliers are plotted as a \
+    diamond symbol")
+plotly.graph
+```
+## Lab1-Q2-8
+Write a Shiny app that produces the same kind of plot as in step 4 but in 
+addition include:
+a. Checkboxes indicating for which variables density plots should be produced
+b. A slider changing the bandwidth parameter in the density estimation ('bw'
+parameter)
+```{r shinye_app, echo=FALSE}
+ui <- fluidPage(
+  titlePanel("Shiny App"),
+  sidebarLayout(
+    sidebarPanel(
+        sliderInput(
+            "bwp",
+            "bandwidth parameter:",
+            min = 0.00001, max = 10, value = 0.5
+        ),
+
+        checkboxGroupInput("cb", "Variables to show:",
+                     c("Length of Stay" = "X1",
+                       "Age" = "X2",
+                       "Infection Risk" = "X3",
+                       "Routine Culturing Ratio" = "X4",
+                       "Routine Chest X-ray Ratio" = "X5",
+                       "Number of Beds" = "X6",
+                       "Average Daily Census" = "X9",
+                       "Number of Nurses" = "X10",
+                       "Available Facilities & Services" = "X11"
+                       )
+                     ,selected = c("X1")
+                     ),
+    ),
+
+    # Main panel for displaying outputs ----
+    mainPanel(
+      plotOutput("outputPlot")
+    )
+  )
+)
+
+# Define server logic to plot various variables against mpg ----
+server <- function(input, output) {
+    getPlots <- function(cols, bw) {
+        des_list <- c("Length of Stay", "Age", "Infection Risk", 
+                      "Routine Culturing Ratio", "Routine Chest X-Ray Ratio", 
+                      "Number of Beds", "Average Daily Census", 
+                      "Number of Nurses",
+                      "Available Facilities and Services")
+        nplot<-length(cols)
+        x<-cols
+        p<-list()
+        for ( i in 1:nplot) {
+            p[[i]] <- outlier_data_and_graph(cols[i], des_list[i])
+        }
+        return(p)
+    }
+    output$outputPlot <- renderPlot({
+        p <- getPlots(input$cb, input$bwp)
+        do.call(grid.arrange,p)
+  })
+
+}
+
+shinyApp(ui, server)
+```
+
