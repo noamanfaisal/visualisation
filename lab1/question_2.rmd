@@ -104,6 +104,17 @@ outlier_data_and_graph <- function(column_name, x_label){
     
   return (graph)
 }
+
+outlier_data_and_graph_with_bw <- function(column_name, x_label, bw){
+  outlier_data <- get_observations_according_to_quartile(data, column_name)  
+  outlier_data <- outlier_data %>%
+                            filter(!is.na(outlier))
+  graph <- create_density_plot_with_bw(data, outlier_data, column_name, x_label,
+                                       bw)
+
+    
+  return (graph)
+}
 ```
 ## Lab1-Q2-3
 
@@ -116,6 +127,13 @@ analysis of this graph.
 infection_risk.graph = outlier_data_and_graph("X3", "Infection Risk")
 print(infection_risk.graph)
 ```
+
+
+#### comments:
+With the density graph it is clearly visible that average of estimated probility
+of acquiring infection in hospital is analogous to normal distribution. More 
+hospitals are at average infection risk. Whereas outliers tells that very few 
+are less or zero risk or at very high risk.
 
 ## Lab1-Q2-4
 Produce graphs of the same kind as in step 3 but for all other quantitative 
@@ -159,11 +177,38 @@ grid.arrange(
   available_facilities_and_services.graph,
   ncol=3)
 ```
+
+#### comments:
+
+
+Lengh of stay: Usually length of stay from 1 to 12 days.
+
+Age: More cases are from age after 40 and between 60. It also shows that after 
+60, there are few people going to hospital. This also depicts the average of 
+pateints.
+
+Routine Culturing ratio or Chest-X-ray ratio depicts that in most hospitals chest X-ray
+occurance is more than routine Culturing ratio.
+Graph also depicts that most hospitals offer these facilities to normal pateints.
+
+Number of Beds: More hospitals have average 100 beds, 
+whereas hospitals with more beds are less.
+
+Number of Nurses: Same as number of beds, more hospitals have 100 number of 
+nurses whereas hopstials with more number of nurses are less.
+
+
 ## Lab1-Q2-5
 Create a ggplot2 scatter plot showing the dependence of Infection risk on the 
 Number of Nurses where the points are colored by Number of Beds. Is there any 
 interesting information in this plot that was not visible in the plots in 
 step 4? What do you think is a possible danger of having such a color scale?
+
+
+
+
+
+
 ```{r scatter_plot, echo=FALSE}
 number_of_nurses_and_infection_risk.graph <- ggplot(data, aes(x=X10, y=X3, 
                                                               color=X6)) +
@@ -172,13 +217,29 @@ number_of_nurses_and_infection_risk.graph <- ggplot(data, aes(x=X10, y=X3,
     ylab('Infection Risk')
 print(number_of_nurses_and_infection_risk.graph)
 ```
+
+#### comments
+
+We can clearly see that more the number of nurses and lesser the risk of 
+infection. The color scales also depict that risk of infection is also dependent
+on the number of beds. But from 0 to 200, color difference is so minor that we 
+not differentiate between different number of beds.
+
+
 ## Lab1-Q2-6
 Convert graph from step 3 to Plotly with ggplotly function. What important new 
 functionality have you obtained compared to the graph from step 3? Make some 
 additional analysis of the new graph.
 ```{r plotly_for_step3, echo=FALSE}
-# ggplotly(infection_risk.graph)
+ggplotly(infection_risk.graph)
+
 ```
+
+
+#### comments
+It is same as older graph except its interactivity, which is very helpful, for example
+by hovering the mouse, we can see the outlier values and can the clear difference between them.
+
 ## Lab1-Q2-7
 
 Use data plot-pipeline and the pipeline operator to make a histogram of 
@@ -213,7 +274,7 @@ ui <- fluidPage(
         sliderInput(
             "bwp",
             "bandwidth parameter:",
-            min = 0.00001, max = 10, value = 0.5
+            min = 0.1, max = 10, value = 0.5
         ),
 
         checkboxGroupInput("cb", "Variables to show:",
@@ -250,7 +311,7 @@ server <- function(input, output) {
         x<-cols
         p<-list()
         for ( i in 1:nplot) {
-            p[[i]] <- outlier_data_and_graph(cols[i], des_list[i])
+            p[[i]] <- outlier_data_and_graph_with_bw(cols[i], des_list[i], bw)
         }
         return(p)
     }
